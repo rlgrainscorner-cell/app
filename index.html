@@ -73,7 +73,7 @@
         document.addEventListener('DOMContentLoaded', () => {
 
             // --- PASSWORD & LOGIN LOGIC ---
-            // PARA PALITAN ANG PASSWORD: Baguhin lang ang text sa loob ng mga apostrophe ('111783 ').
+            // PARA PALITAN ANG PASSWORD: Baguhin lang ang text sa loob ng mga apostrophe (111783 ).
             const CORRECT_PASSWORD = 'admin';
             
             const loginScreen = document.getElementById('login-screen');
@@ -128,9 +128,7 @@
                 "name": "Mesita Recipe App", "short_name": "Mesita", "start_url": ".", "display": "standalone",
                 "background_color": "#FEF2F2", "theme_color": "#DC2626",
                 "icons": [
-                    { "src": "https://placehold.co/192x192/DC2626/ffffff?text=M", "type": "image/png", "sizes": "192x192" },
-                    { "src": "https://placehold.co/512x512/DC2626/ffffff?text=Mesita", "type": "image/png", "sizes": "512x512" }
-                ]
+                    { "src":  "[https://rlgrainscorner-cell.github.io/app/logo192.png](https://rlgrainscorner-cell.github.io/app/logo192.png)", "type": "image/png", "sizes": "192x192" },                { "src": "[https://rlgrainscorner-cell.github.io/app/logo512.png](https://rlgrainscorner-cell.github.io/app/logo512.png)", "type": "image/png", "sizes": "512x512" }              ]
             };
             const manifestURL = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest));
             document.querySelector('#manifest').setAttribute('href', manifestURL);
@@ -248,5 +246,6 @@
     </script>
 </body>
 </html>
+
 
 
