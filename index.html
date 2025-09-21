@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesita - Recipe & Cost Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" id="manifest">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .main-content { display: none; }
+        .active-nav { background-color: #fca5a5; color: #b91c1c; }
+        .modal { display: none; }
+        .modal-content { max-height: 80vh; }
+        main { padding-bottom: 5rem; }
+        @media (min-width: 768px) { main { padding-bottom: 2rem; } }
+        #app-status { position: fixed; bottom: 0; left: 0; width: 100%; padding: 8px; text-align: center; font-size: 0.9rem; transition: background-color 0.5s ease; z-index: 100; }
+        .status-installing { background-color: #fbbf24; color: #422006; }
+        .status-ready { background-color: #22c55e; color: white; }
+        .status-error { background-color: #ef4444; color: white; }
+    </style>
+</head>
+<body class="bg-red-50 text-gray-800">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="fixed inset-0 bg-red-100 flex items-center justify-center z-50">
+        <div class="w-full max-w-xs p-8 bg-white rounded-2xl shadow-xl text-center">
+            <h1 class="text-4xl font-bold text-red-700 mb-2">Mesita</h1>
+            <p class="text-gray-600 mb-8">Mag-login para magpatuloy</p>
+            <form id="login-form" class="space-y-4">
+                <input type="password" id="password-input" placeholder="Password" class="w-full p-3 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-red-500 focus:outline-none">
+                <button type="submit" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition">Login</button>
+            </form>
+            <p id="login-error" class="text-red-500 text-sm mt-4 h-4"></p>
+        </div>
+    </div>
+
+
+    <!-- Main Application (Initially Hidden) -->
+    <div id="app-container" class="hidden">
+        <div class="h-screen bg-gray-100 flex flex-col md:flex-row">
+            <main class="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+                <div class="flex justify-end items-center mb-6">
+                    <button id="logout-btn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition text-sm">Logout</button>
+                </div>
+                <div id="dashboard-content" class="main-content"> <h2 class="text-3xl font-bold text-gray-800 mb-6">Dashboard</h2> <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="font-bold text-gray-500">Total Cost of All Recipes</h3><p id="dashboard-total-cost" class="text-3xl font-extrabold text-red-600 mt-2">₱0.00</p></div> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="font-bold text-gray-500">Potential Total Profit</h3><p id="dashboard-potential-profit" class="text-3xl font-extrabold text-green-600 mt-2">₱0.00</p></div> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="font-bold text-gray-500">Items Needed to Sell</h3><p id="dashboard-total-items" class="text-3xl font-extrabold text-blue-600 mt-2">0</p></div> </div> <div class="mt-8 bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-bold mb-4">Recipe Summary</h3><div id="dashboard-recipe-summary" class="overflow-x-auto"></div></div> </div>
+                <div id="recipes-content" class="main-content"><div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-gray-800">Recipes</h2><button id="add-recipe-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition">Add Recipe</button></div><div id="recipe-list" class="bg-white p-6 rounded-lg shadow-md"></div></div>
+                <div id="ingredients-content" class="main-content"><div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-gray-800">Ingredients</h2><button id="add-ingredient-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition">Add Ingredient</button></div><div id="ingredient-list" class="bg-white p-6 rounded-lg shadow-md"></div></div>
+                <div id="financials-content" class="main-content"><div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-gray-800">Financial Overview</h2><button id="clear-financials-btn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition text-sm">Clear Sample Data</button></div><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg-col-span-1 space-y-6"><div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-bold mb-4">Inputs</h3><div class="space-y-4"><div><label for="initial-investment" class="block text-sm font-medium text-gray-700">Initial Investment (₱)</label><input type="number" id="initial-investment" class="mt-1 w-full p-2 border border-gray-300 rounded-md"></div><div><label for="monthly-sales" class="block text-sm font-medium text-gray-700">Monthly Sales (₱)</label><input type="number" id="monthly-sales" class="mt-1 w-full p-2 border border-gray-300 rounded-md"></div></div></div><div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-bold mb-4">Monthly Expenses</h3><div id="monthly-expenses-list" class="space-y-2 mb-4"></div><form id="add-expense-form" class="flex gap-2"><input type="text" id="expense-name" placeholder="Expense Name" class="flex-grow p-2 border border-gray-300 rounded-md" required><input type="number" id="expense-amount" placeholder="Amount" class="w-28 p-2 border border-gray-300 rounded-md" required><button type="submit" class="bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600">+</button></form></div></div><div class="lg:col-span-2 space-y-6"><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="bg-white p-6 rounded-lg shadow-md text-center"><h3 class="font-bold text-gray-500">Net Profit</h3><p id="net-profit" class="text-3xl font-extrabold text-green-600 mt-2">₱0.00</p></div><div class="bg-white p-6 rounded-lg shadow-md text-center"><h3 class="font-bold text-gray-500">Return on Investment (ROI)</h3><p id="roi" class="text-3xl font-extrabold text-blue-600 mt-2">0%</p></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-bold mb-4 text-center">Expenses Breakdown</h3><canvas id="expenses-chart"></canvas></div><div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-bold mb-4 text-center">Sales Breakdown</h3><canvas id="profit-share-chart"></canvas></div></div></div></div></div>
+            </main>
+            <nav class="fixed bottom-0 left-0 w-full h-20 bg-white shadow-lg md:relative md:h-full md:w-20 lg:w-64 md:shadow-md z-10">
+                <div class="p-4 border-b hidden md:block"><h1 class="text-2xl font-bold text-red-700 hidden lg:block">Mesita</h1><h1 class="text-3xl font-bold text-red-700 text-center lg:hidden">M</h1></div>
+                <ul class="flex flex-row justify-around items-center h-full md:flex-col md:justify-start md:items-stretch md:flex-grow">
+                    <li id="nav-dashboard" class="flex-1 md:flex-none cursor-pointer hover:bg-red-100 flex flex-col items-center justify-center p-2 md:flex-row md:justify-center lg:justify-start md:p-4 active-nav"><svg class="w-6 h-6 mb-1 md:mb-0 lg:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg><span class="text-xs md:hidden lg:hidden">Dashboard</span><span class="hidden lg:inline">Dashboard</span></li>
+                    <li id="nav-recipes" class="flex-1 md:flex-none cursor-pointer hover:bg-red-100 flex flex-col items-center justify-center p-2 md:flex-row md:justify-center lg:justify-start md:p-4"><svg class="w-6 h-6 mb-1 md:mb-0 lg:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4h6a2 2 0 012 2v12a2 2 0 01-2 2H9a2 2 0 01-2-2V6a2 2 0 012-2z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11.5v5M12 7.5v.01"></path></svg><span class="text-xs md:hidden lg:hidden">Recipes</span><span class="hidden lg:inline">Recipes</span></li>
+                    <li id="nav-ingredients" class="flex-1 md:flex-none cursor-pointer hover:bg-red-100 flex flex-col items-center justify-center p-2 md:flex-row md:justify-center lg:justify-start md:p-4"><svg class="w-6 h-6 mb-1 md:mb-0 lg:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg><span class="text-xs md:hidden lg:hidden">Ingredients</span><span class="hidden lg:inline">Ingredients</span></li>
+                    <li id="nav-financials" class="flex-1 md:flex-none cursor-pointer hover:bg-red-100 flex flex-col items-center justify-center p-2 md:flex-row md:justify-center lg:justify-start md:p-4"><svg class="w-6 h-6 mb-1 md:mb-0 lg:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span class="text-xs md:hidden lg:hidden">Financials</span><span class="hidden lg:inline">Financials</span></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+    
+    <!-- MODALS -->
+    <div id="ingredient-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-40"><div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md modal-content overflow-y-auto"><h3 id="ingredient-modal-title" class="text-2xl font-bold mb-6">Add Ingredient</h3><form id="ingredient-form"><input type="hidden" id="ingredient-id"><div class="mb-4"><label for="ingredient-name" class="block text-sm font-medium text-gray-700 mb-1">Ingredient Name</label><input type="text" id="ingredient-name" class="w-full p-2 border border-gray-300 rounded-md" required></div><div class="grid grid-cols-2 gap-4 mb-4"><div><label for="ingredient-qty" class="block text-sm font-medium text-gray-700 mb-1">Purchased Quantity</label><input type="number" id="ingredient-qty" class="w-full p-2 border border-gray-300 rounded-md" required></div><div><label for="ingredient-unit" class="block text-sm font-medium text-gray-700 mb-1">Unit</label><select id="ingredient-unit" class="w-full p-2 border border-gray-300 rounded-md bg-white"></select></div></div><div class="mb-4"><label for="ingredient-cost" class="block text-sm font-medium text-gray-700 mb-1">Purchase Cost (₱)</label><input type="number" id="ingredient-cost" step="0.01" class="w-full p-2 border border-gray-300 rounded-md" required></div><div class="mb-6"><label for="ingredient-wastage" class="block text-sm font-medium text-gray-700 mb-1">Wastage Percentage (%)</label><input type="number" id="ingredient-wastage" class="w-full p-2 border border-gray-300 rounded-md" value="0"></div><div class="flex justify-end gap-4"><button type="button" class="cancel-btn bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-400">Cancel</button><button type="submit" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Save</button></div></form></div></div>
+    <div id="recipe-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-40"><div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-4xl modal-content overflow-y-auto"><h3 id="recipe-modal-title" class="text-2xl font-bold mb-6">Create Recipe</h3><form id="recipe-form"><input type="hidden" id="recipe-id"><div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4"><div><label for="recipe-name" class="block text-sm font-medium text-gray-700 mb-1">Recipe Name</label><input type="text" id="recipe-name" class="w-full p-2 border border-gray-300 rounded-md" required></div><div><label for="recipe-yield" class="block text-sm font-medium text-gray-700 mb-1">Recipe Yield</label><input type="number" id="recipe-yield" class="w-full p-2 border border-gray-300 rounded-md" required></div></div><div class="mt-6 border-t pt-4"><div class="flex justify-between items-center mb-4"><h4 class="text-lg font-semibold">Recipe Ingredients</h4><button type="button" id="add-recipe-ingredient-btn" class="bg-blue-500 text-white font-bold py-1 px-3 rounded-lg hover:bg-blue-600 text-sm">Add Ingredient</button></div><div id="recipe-ingredients-container" class="space-y-2"></div></div><div class="mt-6 border-t pt-4"><div class="border-b border-gray-200"><nav class="-mb-px flex space-x-8"><a href="#" id="tab-pricing" class="border-red-500 text-red-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Pricing</a><a href="#" id="tab-projection" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Projection</a></nav></div><div id="pricing-tab-content" class="py-4"><div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4"><div><label for="overhead-cost" class="block text-sm font-medium text-gray-700 mb-1">Overhead Cost (%)</label><input type="number" id="overhead-cost" value="0" class="w-full p-2 border border-gray-300 rounded-md"></div><div><label for="selling-price" class="block text-sm font-medium text-gray-700 mb-1">Selling Price (per item) (₱)</label><input type="number" id="selling-price" step="0.01" value="0" class="w-full p-2 border border-gray-300 rounded-md"></div></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 text-center"><div class="bg-gray-100 p-4 rounded-md"><h5 class="text-sm font-medium text-gray-500">Total Recipe Cost</h5><p id="price-total-cost" class="text-lg font-bold">₱0.00</p></div><div class="bg-gray-100 p-4 rounded-md"><h5 class="text-sm font-medium text-gray-500">Cost Per Unit</h5><p id="price-cost-per-unit" class="text-lg font-bold">₱0.00</p></div><div class="bg-gray-100 p-4 rounded-md"><h5 class="text-sm font-medium text-gray-500">Profit Margin</h5><p id="price-profit-margin" class="text-lg font-bold">0%</p></div></div></div><div id="projection-tab-content" class="py-4 hidden"><div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4"><div><label for="target-profit" class="block text-sm font-medium text-gray-700 mb-1">Target Profit (₱)</label><input type="number" id="target-profit" step="100" value="1000" class="w-full p-2 border border-gray-300 rounded-md"></div></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 text-center"><div class="bg-gray-100 p-4 rounded-md"><h5 class="text-sm font-medium text-gray-500">Suggested Selling Price</h5><p id="proj-srp" class="text-lg font-bold">₱0.00</p></div><div class="bg-gray-100 p-4 rounded-md"><h5 class="text-sm font-medium text-gray-500">Profit Per Item</h5><p id="proj-profit-per-item" class="text-lg font-bold">₱0.00</p></div><div class="bg-gray-100 p-4 rounded-md"><h5 class="text-sm font-medium text-gray-500">Items to Sell for Target</h5><p id="proj-items-to-sell" class="text-lg font-bold">0</p></div></div></div></div><div class="flex justify-end gap-4 mt-8"><button type="button" class="cancel-btn bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-400">Cancel</button><button type="submit" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Save Recipe</button></div></form></div></div>
+    <div id="add-ingredient-to-recipe-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-lg modal-content overflow-y-auto"><h3 class="text-2xl font-bold mb-6">Add Ingredient to Recipe</h3><div class="mb-4"><label for="select-ingredient" class="block text-sm font-medium text-gray-700 mb-1">Select an Ingredient</label><select id="select-ingredient" class="w-full p-2 border border-gray-300 rounded-md bg-white"></select></div><div class="grid grid-cols-2 gap-4 mb-6"><div><label for="recipe-ingredient-qty" class="block text-sm font-medium text-gray-700 mb-1">Quantity to Use</label><input type="number" id="recipe-ingredient-qty" class="w-full p-2 border border-gray-300 rounded-md" required></div><div><label for="recipe-ingredient-unit" class="block text-sm font-medium text-gray-700 mb-1">Unit</label><select id="recipe-ingredient-unit" class="w-full p-2 border border-gray-300 rounded-md bg-white"></select></div></div><div class="flex justify-end gap-4"><button type="button" class="cancel-add-ingredient bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-400">Cancel</button><button type="button" id="confirm-add-ingredient" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600">Add</button></div></div></div>
+
+    <div id="app-status" class="status-installing">Inihahanda ang app para sa offline...</div>
+
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- PASSWORD & LOGIN LOGIC ---
+            // PARA PALITAN ANG PASSWORD: Baguhin lang ang text sa loob ng mga apostrophe ('111783 ').
+            const CORRECT_PASSWORD = 'admin';
+            
+            const loginScreen = document.getElementById('login-screen');
+            const appContainer = document.getElementById('app-container');
+            const loginForm = document.getElementById('login-form');
+            const passwordInput = document.getElementById('password-input');
+            const loginError = document.getElementById('login-error');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            // Check if user is already logged in for this session
+            if (sessionStorage.getItem('mesita-loggedin') === 'true') {
+                showApp();
+            } else {
+                showLogin();
+            }
+
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (passwordInput.value === CORRECT_PASSWORD) {
+                    sessionStorage.setItem('mesita-loggedin', 'true');
+                    showApp();
+                } else {
+                    loginError.textContent = 'Mali ang password.';
+                    passwordInput.value = '';
+                }
+            });
+
+            logoutBtn.addEventListener('click', () => {
+                sessionStorage.removeItem('mesita-loggedin');
+                showLogin();
+            });
+
+            function showApp() {
+                loginScreen.style.display = 'none';
+                appContainer.classList.remove('hidden');
+                initAppLogic(); // Start the main app only after successful login
+            }
+
+            function showLogin() {
+                loginScreen.style.display = 'flex';
+                appContainer.classList.add('hidden');
+                passwordInput.value = '';
+                loginError.textContent = '';
+                // BAGONG DAGDAG: Piliting isara ang lahat ng modal para maiwasan ang frozen screen
+                document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
+            }
+
+
+            // --- PWA SETUP ---
+            const appStatus = document.getElementById('app-status');
+            const manifest = {
+                "name": "Mesita Recipe App", "short_name": "Mesita", "start_url": ".", "display": "standalone",
+                "background_color": "#FEF2F2", "theme_color": "#DC2626",
+                "icons": [
+                    { "src": "https://placehold.co/192x192/DC2626/ffffff?text=M", "type": "image/png", "sizes": "192x192" },
+                    { "src": "https://placehold.co/512x512/DC2626/ffffff?text=Mesita", "type": "image/png", "sizes": "512x512" }
+                ]
+            };
+            const manifestURL = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest));
+            document.querySelector('#manifest').setAttribute('href', manifestURL);
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('sw.js')
+                        .then(reg => {
+                            console.log('Service worker registered successfully.');
+                            appStatus.textContent = 'App ay handa na para sa offline use!';
+                            appStatus.className = 'status-ready';
+                        })
+                        .catch(err => {
+                            console.log('Service worker registration failed: ', err);
+                            appStatus.textContent = 'Error sa pag-install ng offline mode.';
+                            appStatus.className = 'status-error';
+                        });
+                });
+            } else {
+                appStatus.textContent = 'Offline mode ay hindi suportado sa browser na ito.';
+                appStatus.className = 'status-error';
+            }
+
+
+            // --- MAIN APP LOGIC (Using LocalStorage) ---
+            let appInitialized = false;
+            function initAppLogic() {
+                if (appInitialized) return; // Run only once
+                appInitialized = true;
+
+                let ingredients, recipes, financials;
+                let currentRecipeIngredients = [];
+                let expensesChartInstance = null;
+                let profitShareChartInstance = null;
+                
+                const UNITS = {'g':{type:'weight',factor:1},'kg':{type:'weight',factor:1000},'oz':{type:'weight',factor:28.35},'lb':{type:'weight',factor:453.592},'ml':{type:'volume',factor:1},'l':{type:'volume',factor:1000},'tsp':{type:'volume',factor:4.929},'tbsp':{type:'volume',factor:14.787},'cup':{type:'volume',factor:236.588},'pcs':{type:'piece',factor:1}};
+                const UNIT_OPTIONS = Object.keys(UNITS).map(unit => `<option value="${unit}">${unit}</option>`).join('');
+                const DEFAULT_FINANCIALS = { initialInvestment: 10000, monthlySales: 12000, monthlyExpenses: [ { id: 'exp1', name: 'Rent', amount: 2000 }, { id: 'exp2', name: 'Ingredients', amount: 3000 }, { id: 'exp3', name: 'Utilities', amount: 1000 } ] };
+
+                function loadData() {
+                    try { ingredients = JSON.parse(localStorage.getItem('mesita-ingredients')) || []; if(!Array.isArray(ingredients)) ingredients = []; } catch (e) { ingredients = []; }
+                    try { recipes = JSON.parse(localStorage.getItem('mesita-recipes')) || []; if(!Array.isArray(recipes)) recipes = []; } catch (e) { recipes = []; }
+                    try { financials = JSON.parse(localStorage.getItem('mesita-financials')) || DEFAULT_FINANCIALS; if (typeof financials !== 'object' || !Array.isArray(financials.monthlyExpenses)) financials = DEFAULT_FINANCIALS; } catch (e) { financials = DEFAULT_FINANCIALS; }
+                    saveAllData();
+                }
+                
+                const navItems = { dashboard: document.getElementById('nav-dashboard'), recipes: document.getElementById('nav-recipes'), ingredients: document.getElementById('nav-ingredients'), financials: document.getElementById('nav-financials'), };
+                const contentAreas = { dashboard: document.getElementById('dashboard-content'), recipes: document.getElementById('recipes-content'), ingredients: document.getElementById('ingredients-content'), financials: document.getElementById('financials-content'), };
+                const ingredientModal = document.getElementById('ingredient-modal'), recipeModal = document.getElementById('recipe-modal'), addIngredientToRecipeModal = document.getElementById('add-ingredient-to-recipe-modal');
+                const ingredientForm = document.getElementById('ingredient-form'), recipeFormElement = document.getElementById('recipe-form');
+
+                const saveIngredients = () => localStorage.setItem('mesita-ingredients', JSON.stringify(ingredients));
+                const saveRecipes = () => localStorage.setItem('mesita-recipes', JSON.stringify(recipes));
+                const saveFinancials = () => localStorage.setItem('mesita-financials', JSON.stringify(financials));
+                const saveAllData = () => { saveIngredients(); saveRecipes(); saveFinancials(); }
+
+                const formatCurrency = (amount) => `₱${Number(amount || 0).toFixed(2)}`;
+                const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                
+                function renderAll() { renderIngredients(); renderRecipes(); renderDashboard(); calculateAndDisplayFinancials(); }
+                function renderIngredients() { const list = document.getElementById('ingredient-list'); if(!list) return; list.innerHTML = ingredients.length === 0 ? `<p class="text-center text-gray-500">No ingredients yet.</p>` : `<div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Name</th><th class="px-6 py-3">Cost</th><th class="px-6 py-3">Wastage</th><th class="px-6 py-3 text-right">Actions</th></tr></thead><tbody>${ingredients.map(ing => `<tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${ing.name}</td><td class="px-6 py-4">${formatCurrency(ing.cost)} / ${ing.qty} ${ing.unit}</td><td class="px-6 py-4">${ing.wastage}%</td><td class="px-6 py-4 text-right"><button class="edit-ingredient-btn font-medium text-blue-600 hover:underline mr-4" data-id="${ing.id}">Edit</button><button class="delete-ingredient-btn font-medium text-red-600 hover:underline" data-id="${ing.id}">Delete</button></td></tr>`).join('')}</tbody></table></div>`;}
+                function renderRecipes() { const list = document.getElementById('recipe-list'); if(!list) return; list.innerHTML = recipes.length === 0 ? `<p class="text-center text-gray-500">No recipes yet.</p>` : `<div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Name</th><th class="px-6 py-3">Yield</th><th class="px-6 py-3">Cost/Yield</th><th class="px-6 py-3">Price</th><th class="px-6 py-3 text-right">Actions</th></tr></thead><tbody>${recipes.map(rec => `<tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${rec.name}</td><td class="px-6 py-4">${rec.yield}</td><td class="px-6 py-4">${formatCurrency(calculateRecipeCosts(rec).costPerYield)}</td><td class="px-6 py-4">${formatCurrency(rec.sellingPrice)}</td><td class="px-6 py-4 text-right"><button class="edit-recipe-btn font-medium text-blue-600 hover:underline mr-4" data-id="${rec.id}">Edit</button><button class="delete-recipe-btn font-medium text-red-600 hover:underline" data-id="${rec.id}">Delete</button></td></tr>`).join('')}</tbody></table></div>`;}
+                function renderCurrentRecipeIngredients() { const container = document.getElementById('recipe-ingredients-container'); if(!container) return; container.innerHTML = currentRecipeIngredients.length === 0 ? `<p class="text-center text-sm text-gray-500">No ingredients added.</p>` : currentRecipeIngredients.map((item, index) => { const ingredient = ingredients.find(i => i.id === item.ingredientId); return `<div class="flex items-center justify-between bg-gray-50 p-2 rounded-md"><div><p class="font-medium">${ingredient ? ingredient.name : 'Unknown'}</p><p class="text-sm text-gray-500">${item.qty} ${item.unit}</p></div><div class="text-right"><p class="font-semibold">${formatCurrency(calculateSingleRecipeIngredientCost(item))}</p></div><button type="button" class="delete-recipe-ingredient-btn ml-4 text-red-500" data-index="${index}">&times;</button></div>`; }).join(''); updatePricingProjection(); }
+                function renderDashboard() { if(recipes.length === 0){document.getElementById('dashboard-recipe-summary').innerHTML = `<p class="text-center text-gray-500">No recipe data.</p>`;document.getElementById('dashboard-total-cost').textContent = formatCurrency(0);document.getElementById('dashboard-potential-profit').textContent = formatCurrency(0);document.getElementById('dashboard-total-items').textContent = 0;return;} let totalCost=0, potentialProfit=0, totalItemsToSell=0; const summaryTable = `<div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Recipe</th><th class="px-6 py-3">Cost/Yield</th><th class="px-6 py-3">Profit/Item</th><th class="px-6 py-3">Target Items</th></tr></thead><tbody>${recipes.map(rec => { const { costPerYield, totalCostWithOverhead } = calculateRecipeCosts(rec); const profitPerItem = rec.sellingPrice - costPerYield; const itemsToSell = profitPerItem > 0 ? Math.ceil(rec.targetProfit / profitPerItem) : 'N/A'; totalCost += totalCostWithOverhead; if(profitPerItem > 0) potentialProfit += profitPerItem * rec.yield; if (typeof itemsToSell === 'number') totalItemsToSell += itemsToSell; return `<tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${rec.name}</td><td class="px-6 py-4">${formatCurrency(costPerYield)}</td><td class="px-6 py-4 ${profitPerItem >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(profitPerItem)}</td><td class="px-6 py-4">${itemsToSell}</td></tr>`; }).join('')}</tbody></table></div>`; document.getElementById('dashboard-recipe-summary').innerHTML = summaryTable; document.getElementById('dashboard-total-cost').textContent = formatCurrency(totalCost); document.getElementById('dashboard-potential-profit').textContent = formatCurrency(potentialProfit); document.getElementById('dashboard-total-items').textContent = totalItemsToSell; }
+                function renderMonthlyExpenses() { const list = document.getElementById('monthly-expenses-list'); if(!list) return; list.innerHTML = financials.monthlyExpenses.length === 0 ? `<p class="text-xs text-center text-gray-500">No expenses.</p>` : financials.monthlyExpenses.map(exp => `<div class="flex justify-between items-center text-sm p-2 bg-gray-50 rounded"><span>${exp.name}</span><div><span>${formatCurrency(exp.amount)}</span><button class="delete-expense-btn text-red-500 hover:text-red-700 ml-2" data-id="${exp.id}">&times;</button></div></div>`).join(''); }
+                function renderCharts() { const totalExpenses = financials.monthlyExpenses.reduce((sum, exp) => sum + exp.amount, 0); const netProfit = financials.monthlySales - totalExpenses; if (expensesChartInstance) expensesChartInstance.destroy(); if (document.getElementById('expenses-chart') && totalExpenses > 0) { expensesChartInstance = new Chart(document.getElementById('expenses-chart').getContext('2d'), { type: 'pie', data: { labels: financials.monthlyExpenses.map(e => e.name), datasets: [{ data: financials.monthlyExpenses.map(e => e.amount), backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6'], hoverOffset: 4 }] }, options: { responsive: true, plugins: { legend: { position: 'top' } } } }); } if (profitShareChartInstance) profitShareChartInstance.destroy(); if (document.getElementById('profit-share-chart') && financials.monthlySales > 0) { profitShareChartInstance = new Chart(document.getElementById('profit-share-chart').getContext('2d'), { type: 'doughnut', data: { labels: ['Expenses', 'Net Profit'], datasets: [{ data: [totalExpenses, netProfit > 0 ? netProfit : 0], backgroundColor: ['#ef4444', '#22c55e'], hoverOffset: 4 }] }, options: { responsive: true, plugins: { legend: { position: 'top' } } } }); } }
+                
+                function getIngredientCostPerBaseUnit(ing) { if (!ing) return 0; const unitInfo = UNITS[ing.unit]; const effectiveQty = ing.qty * (1 - (ing.wastage / 100)); if (!unitInfo || effectiveQty <= 0) return 0; return ing.cost / (effectiveQty * unitInfo.factor); }
+                function calculateSingleRecipeIngredientCost(item) { const master = ingredients.find(i => i.id === item.ingredientId); if (!master) return 0; const costPerBase = getIngredientCostPerBaseUnit(master); const usedUnitInfo = UNITS[item.unit]; const masterUnitInfo = UNITS[master.unit]; if (usedUnitInfo && masterUnitInfo && usedUnitInfo.type === masterUnitInfo.type) { return item.qty * usedUnitInfo.factor * costPerBase; } return 0; }
+                function calculateRecipeCosts(rec) { let totalCost = rec.ingredients.reduce((sum, item) => sum + calculateSingleRecipeIngredientCost(item), 0); const totalCostWithOverhead = totalCost * (1 + (rec.overheadCost / 100)); return { totalCost, totalCostWithOverhead, costPerYield: rec.yield > 0 ? totalCostWithOverhead / rec.yield : 0 }; }
+                function updatePricingProjection() { const yieldVal = parseFloat(document.getElementById('recipe-yield').value) || 0, overhead = parseFloat(document.getElementById('overhead-cost').value) || 0, price = parseFloat(document.getElementById('selling-price').value) || 0, target = parseFloat(document.getElementById('target-profit').value) || 0; const { totalCostWithOverhead, costPerYield } = calculateRecipeCosts({ yield: yieldVal, overheadCost: overhead, ingredients: currentRecipeIngredients }); document.getElementById('price-total-cost').textContent = formatCurrency(totalCostWithOverhead); document.getElementById('price-cost-per-unit').textContent = formatCurrency(costPerYield); const profitMargin = price > 0 ? ((price - costPerYield) / price) * 100 : 0; document.getElementById('price-profit-margin').textContent = `${profitMargin.toFixed(1)}%`; const profitPerItem = price - costPerYield; document.getElementById('proj-srp').textContent = formatCurrency(price); document.getElementById('proj-profit-per-item').textContent = formatCurrency(profitPerItem); document.getElementById('proj-items-to-sell').textContent = profitPerItem > 0 ? Math.ceil(target / profitPerItem) : 'N/A'; }
+                function calculateAndDisplayFinancials() { const investment = financials.initialInvestment || 0, sales = financials.monthlySales || 0, totalExpenses = financials.monthlyExpenses.reduce((s, e) => s + e.amount, 0), netProfit = sales - totalExpenses, roi = investment > 0 ? (netProfit / investment) * 100 : 0; document.getElementById('net-profit').textContent = formatCurrency(netProfit); document.getElementById('roi').textContent = `${roi.toFixed(1)}%`; renderMonthlyExpenses(); renderCharts(); }
+
+                function switchView(view) { Object.values(contentAreas).forEach(a => a.style.display = 'none'); Object.values(navItems).forEach(n => n.classList.remove('active-nav')); contentAreas[view].style.display = 'block'; navItems[view].classList.add('active-nav'); if (view === 'dashboard') renderDashboard(); if (view === 'financials') calculateAndDisplayFinancials(); }
+                function openModal(modal) { if (modal) modal.style.display = 'flex'; }
+                function closeModal(modal) { if (modal) modal.style.display = 'none'; }
+                
+                Object.keys(navItems).forEach(key => navItems[key].addEventListener('click', () => switchView(key)));
+                document.querySelectorAll('.cancel-btn, .cancel-add-ingredient').forEach(btn => btn.addEventListener('click', () => { closeModal(ingredientModal); closeModal(recipeModal); closeModal(addIngredientToRecipeModal); }));
+                
+                document.getElementById('add-ingredient-btn').addEventListener('click', () => { ingredientForm.reset(); ingredientForm.querySelector('#ingredient-id').value = ''; document.getElementById('ingredient-modal-title').textContent = 'Add Ingredient'; openModal(ingredientModal); });
+                ingredientForm.addEventListener('submit', (e) => { e.preventDefault(); const id = document.getElementById('ingredient-id').value; const data = { name: document.getElementById('ingredient-name').value, qty: parseFloat(document.getElementById('ingredient-qty').value), unit: document.getElementById('ingredient-unit').value, cost: parseFloat(document.getElementById('ingredient-cost').value), wastage: parseFloat(document.getElementById('ingredient-wastage').value) || 0 }; if (id) { const i = ingredients.findIndex(ing => ing.id === id); if (i > -1) ingredients[i] = { ...ingredients[i], ...data }; } else { data.id = generateId(); ingredients.push(data); } saveIngredients(); renderIngredients(); closeModal(ingredientModal); });
+                document.getElementById('ingredient-list').addEventListener('click', (e) => { const btn = e.target.closest('button'); if (!btn) return; const id = btn.dataset.id; if (btn.classList.contains('edit-ingredient-btn')) { const ing = ingredients.find(i => i.id === id); if (ing) { ingredientForm.querySelector('#ingredient-id').value = ing.id; ingredientForm.querySelector('#ingredient-name').value = ing.name; ingredientForm.querySelector('#ingredient-qty').value = ing.qty; ingredientForm.querySelector('#ingredient-unit').value = ing.unit; ingredientForm.querySelector('#ingredient-cost').value = ing.cost; ingredientForm.querySelector('#ingredient-wastage').value = ing.wastage; document.getElementById('ingredient-modal-title').textContent = 'Edit Ingredient'; openModal(ingredientModal); } } else if (btn.classList.contains('delete-ingredient-btn')) { ingredients = ingredients.filter(ing => ing.id !== id); saveIngredients(); renderIngredients(); } });
+                
+                document.getElementById('add-recipe-btn').addEventListener('click', () => { recipeFormElement.reset(); recipeFormElement.querySelector('#recipe-id').value = ''; document.getElementById('recipe-modal-title').textContent = 'Create Recipe'; currentRecipeIngredients = []; renderCurrentRecipeIngredients(); openModal(recipeModal); });
+                recipeFormElement.addEventListener('submit', e => { e.preventDefault(); const id = document.getElementById('recipe-id').value; const data = { name: document.getElementById('recipe-name').value, yield: parseFloat(document.getElementById('recipe-yield').value), ingredients: currentRecipeIngredients, overheadCost: parseFloat(document.getElementById('overhead-cost').value) || 0, sellingPrice: parseFloat(document.getElementById('selling-price').value) || 0, targetProfit: parseFloat(document.getElementById('target-profit').value) || 1000 }; if (id) { const i = recipes.findIndex(r => r.id === id); if (i > -1) recipes[i] = { ...recipes[i], ...data }; } else { data.id = generateId(); recipes.push(data); } saveRecipes(); renderAll(); closeModal(recipeModal); });
+                document.getElementById('recipe-list').addEventListener('click', (e) => { const btn = e.target.closest('button'); if (!btn) return; const id = btn.dataset.id; if (btn.classList.contains('edit-recipe-btn')) { const rec = recipes.find(r => r.id === id); if (rec) { recipeFormElement.querySelector('#recipe-id').value = rec.id; recipeFormElement.querySelector('#recipe-name').value = rec.name; recipeFormElement.querySelector('#recipe-yield').value = rec.yield; recipeFormElement.querySelector('#overhead-cost').value = rec.overheadCost; recipeFormElement.querySelector('#selling-price').value = rec.sellingPrice; recipeFormElement.querySelector('#target-profit').value = rec.targetProfit; currentRecipeIngredients = [...rec.ingredients]; renderCurrentRecipeIngredients(); document.getElementById('recipe-modal-title').textContent = 'Edit Recipe'; openModal(recipeModal); } } else if (btn.classList.contains('delete-recipe-btn')) { recipes = recipes.filter(r => r.id !== id); saveRecipes(); renderAll(); } });
+                
+                document.getElementById('add-recipe-ingredient-btn').addEventListener('click', () => { if (ingredients.length === 0) return alert('Add an ingredient first.'); document.getElementById('select-ingredient').innerHTML = ingredients.map(i => `<option value="${i.id}">${i.name}</option>`).join(''); document.getElementById('recipe-ingredient-qty').value = ''; openModal(addIngredientToRecipeModal); });
+                document.getElementById('confirm-add-ingredient').addEventListener('click', () => { const id = document.getElementById('select-ingredient').value, qty = parseFloat(document.getElementById('recipe-ingredient-qty').value), unit = document.getElementById('recipe-ingredient-unit').value; if (id && qty > 0 && unit) { currentRecipeIngredients.push({ ingredientId: id, qty, unit }); renderCurrentRecipeIngredients(); closeModal(addIngredientToRecipeModal); } });
+                document.getElementById('recipe-ingredients-container').addEventListener('click', (e) => { const btn = e.target.closest('.delete-recipe-ingredient-btn'); if (btn) { currentRecipeIngredients.splice(btn.dataset.index, 1); renderCurrentRecipeIngredients(); } });
+                
+                ['overhead-cost', 'selling-price', 'target-profit', 'recipe-yield'].forEach(id => document.getElementById(id).addEventListener('input', updatePricingProjection));
+                document.getElementById('tab-pricing').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('pricing-tab-content').style.display = 'block'; document.getElementById('projection-tab-content').style.display = 'none'; e.target.classList.add('border-red-500', 'text-red-600'); document.getElementById('tab-projection').classList.remove('border-red-500', 'text-red-600');});
+                document.getElementById('tab-projection').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('projection-tab-content').style.display = 'block'; document.getElementById('pricing-tab-content').style.display = 'none'; e.target.classList.add('border-red-500', 'text-red-600'); document.getElementById('tab-pricing').classList.remove('border-red-500', 'text-red-600');});
+                
+                document.getElementById('initial-investment').addEventListener('input', (e) => { financials.initialInvestment = parseFloat(e.target.value) || 0; saveFinancials(); calculateAndDisplayFinancials(); });
+                document.getElementById('monthly-sales').addEventListener('input', (e) => { financials.monthlySales = parseFloat(e.target.value) || 0; saveFinancials(); calculateAndDisplayFinancials(); });
+                document.getElementById('add-expense-form').addEventListener('submit', (e) => { e.preventDefault(); const name = document.getElementById('expense-name').value, amount = parseFloat(document.getElementById('expense-amount').value); if (name && amount > 0) { financials.monthlyExpenses.push({ id: generateId(), name, amount }); saveFinancials(); calculateAndDisplayFinancials(); e.target.reset(); } });
+                document.getElementById('monthly-expenses-list').addEventListener('click', (e) => { const btn = e.target.closest('.delete-expense-btn'); if (btn) { financials.monthlyExpenses = financials.monthlyExpenses.filter(exp => exp.id !== btn.dataset.id); saveFinancials(); calculateAndDisplayFinancials(); } });
+                document.getElementById('clear-financials-btn').addEventListener('click', () => { financials = DEFAULT_FINANCIALS; saveFinancials(); document.getElementById('initial-investment').value = financials.initialInvestment; document.getElementById('monthly-sales').value = financials.monthlySales; calculateAndDisplayFinancials(); });
+
+                function init() {
+                    loadData();
+                    document.getElementById('ingredient-unit').innerHTML = UNIT_OPTIONS;
+                    document.getElementById('recipe-ingredient-unit').innerHTML = UNIT_OPTIONS;
+                    document.getElementById('initial-investment').value = financials.initialInvestment;
+                    document.getElementById('monthly-sales').value = financials.monthlySales;
+                    renderAll();
+                    switchView('dashboard'); 
+                }
+
+                init();
+            }
+        });
+    </script>
+</body>
+</html>
+
+
